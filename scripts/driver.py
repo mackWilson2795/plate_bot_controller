@@ -19,7 +19,14 @@ class comp_driver:
         self.image_sub = rospy.Subscriber("/R1/pi_camera/image_raw",
                                             Image,
                                             self.callback)
+        self.licenses = rospy.Publisher("/license_plate",
+                                            String,
+                                            queue_size = 4)
+        # self.timer = rospy.Subscriber("/clock",
+        #                                 ) #What datatype does the clock output?
         time.sleep(1)
+
+        self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
 
     def callback(self,data):
         try:
