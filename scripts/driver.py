@@ -27,6 +27,7 @@ class comp_driver:
         time.sleep(1)
 
         self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
+        self.startup_time = time.time()
 
     def callback(self,data):
         try:
@@ -35,9 +36,17 @@ class comp_driver:
             print(e) #this could get changed to pass so that we don't clog the terminal during comp if there is no image
          
         move = Twist()
-        move.linear.x = 0.1
-        move.angular.z = 0.8
 
+        if(time.time() < self.startup_time + 2):
+            move.linear.x = 0.2
+            move.angular.z = 0.0
+        elif(time.time() < self.startup_time + 5.5):
+            move.linear.x = 0.0
+            move.angular.z = 0.6
+        else:
+            move.linear.x = 0.2
+            move.angular.z = 0.0
+        
         cv2.imshow("raw feed", cv_image)
         cv2.waitKey(3)
 
