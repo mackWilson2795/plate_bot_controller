@@ -12,6 +12,9 @@ import time
 class comp_driver:
 
     def __init__(self):
+
+        self.startup_time = time.time()
+
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
                                         queue_size = 1)
@@ -27,7 +30,7 @@ class comp_driver:
         time.sleep(1)
 
         self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
-        self.startup_time = time.time()
+        self.timer_running = True
 
     def callback(self,data):
         try:
@@ -37,15 +40,21 @@ class comp_driver:
          
         move = Twist()
 
-        if(time.time() < self.startup_time + 2):
+        if(time.time() < self.startup_time + 3):
             move.linear.x = 0.2
             move.angular.z = 0.0
-        elif(time.time() < self.startup_time + 5.5):
+        elif(time.time() < self.startup_time + 6.5):
             move.linear.x = 0.0
             move.angular.z = 0.6
-        else:
+        elif(time.time() < self.startup_time + 8):
             move.linear.x = 0.2
             move.angular.z = 0.0
+        else:
+            move.linear.x = 0
+            move.angular.z = 0
+            if self.timer_running:
+                self.licenses.publish("TeamEthan,notsafe,-1,AA00")
+                self.timer_running = False
         
         cv2.imshow("raw feed", cv_image)
         cv2.waitKey(3)
