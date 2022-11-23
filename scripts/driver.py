@@ -13,7 +13,7 @@ class comp_driver:
 
     def __init__(self):
 
-        self.startup_time = time.time()
+        self.startup_time = time.time() - 1.0
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -43,10 +43,10 @@ class comp_driver:
         if(time.time() < self.startup_time + 3):
             move.linear.x = 0.2
             move.angular.z = 0.0
-        elif(time.time() < self.startup_time + 6.5):
+        elif(time.time() < self.startup_time + 6.4):
             move.linear.x = 0.0
             move.angular.z = 0.6
-        elif(time.time() < self.startup_time + 8):
+        elif(time.time() < self.startup_time + 11):
             move.linear.x = 0.2
             move.angular.z = 0.0
         else:
