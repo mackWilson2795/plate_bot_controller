@@ -15,6 +15,8 @@ class image_producer:
         self.bridge = CvBridge()
         self.im_num = self.set_im_num()
         self.max_images = 1000000
+        self.frame_count = 0
+        self.frame_skip = 5
         self.image_sub = rospy.Subscriber("/R1/pi_camera/image_raw", Image, self.img_callback)
         self.vel_sub = rospy.Subscriber("/R1/cmd_vel", Twist, self.vel_callback)
     
@@ -23,10 +25,14 @@ class image_producer:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
-        if (self.im_num < self.max_images):
+        if (self.im_num < self.max_images and self.vel_state != [0.0,0.0] and
+                            (self.frame_count >= self.frame_skip or self.vel_state != self.vel_last)):
             print(f"Writing img to file: {self.im_path}{self.im_num:06d}")
             cv2.imwrite(f"{self.im_path}{self.vel_state[0]}_{self.vel_state[1]}_{self.im_num:06d}.jpg", cv_image)     
             self.im_num += 1
+            self.frame_count = 0
+            self.vel_last = self.vel_state
+        self.frame_count += 1
         
     def set_im_num(self):
         file_list = os.listdir(self.im_path)
