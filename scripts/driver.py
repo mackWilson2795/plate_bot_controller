@@ -61,8 +61,14 @@ class comp_driver:
 
         contours, hierarchy = cv2.findContours(new_threshold.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
-        max_contour = cntsSorted[-1] #This needs to be changed for thew case when there are no contours on screen
+
+        if len(cntsSorted) > 0:
+            max_contour = cntsSorted[-1] #This needs to be changed for the case when there are no contours on screen
+        else :
+            max_contour = 0
+            
         approx = None
+
         if cv2.contourArea(max_contour) > MIN_CONTOUR_AREA:
             epsilon = 0.01*cv2.arcLength(max_contour,True)
             approx = cv2.approxPolyDP(max_contour,epsilon, True)
