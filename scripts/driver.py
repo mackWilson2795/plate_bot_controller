@@ -9,6 +9,7 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Twist
+import rosgraph_msgs
 import time
 from tensorflow.keras import layers
 from tensorflow.keras import models
@@ -31,8 +32,8 @@ class comp_driver:
 
     def __init__(self):
 
-        self.state = "outer"
-        self.startup_time = time.time() - 1.0
+        self.state = "startup"
+        
         self.controller = driver_controller()
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
@@ -45,10 +46,11 @@ class comp_driver:
         self.licenses = rospy.Publisher("/license_plate",
                                             String,
                                             queue_size = 4)
-        # self.timer = rospy.Subscriber("/clock",
-        #                                 ) #What datatype does the clock output?
+        self.timer = rospy.Subscriber("/clock",
+                                        rosgraph_msgs.Clock) 
         time.sleep(1)
 
+        # self.startup_time = self.timer.
         self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
         self.timer_running = True
 
@@ -65,7 +67,7 @@ class comp_driver:
         BOTTOM_CUT = 550
         LOWER_THRESHOLD = 90
         UPPER_THRESHOLD = 210
-        MIN_CONTOUR_AREA = 8000
+        MIN_CONTOUR_AREA = 9500
 
         cut_image = self.raw_cv_image[TOP_CUT:BOTTOM_CUT,:]
         hsv_image = cv2.cvtColor(cut_image, cv2.COLOR_BGR2HSV)
@@ -79,37 +81,35 @@ class comp_driver:
 
         contours, hierarchy = cv2.findContours(new_threshold.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
-        max_contour = cntsSorted[-1] #This needs to be changed for thew case when there are no contours on screen
         approx = None
-        if cv2.contourArea(max_contour) > MIN_CONTOUR_AREA:
+        marked_raw = self.raw_cv_image
+
+        if len(cntsSorted) > 0 and cv2.contourArea(cntsSorted[-1]) > MIN_CONTOUR_AREA:
+            
+            max_contour = cntsSorted[-1]
+            
             epsilon = 0.01*cv2.arcLength(max_contour,True)
             approx = cv2.approxPolyDP(max_contour,epsilon, True)
 
-            new_threshold = cv2.cvtColor(new_threshold, cv2.COLOR_GRAY2BGR)
-            
-            if len(contours) > 0:
+            if len(approx) == 4:
+
+                new_threshold = cv2.cvtColor(new_threshold, cv2.COLOR_GRAY2BGR)
                 
+                    
                 for i in range(len(approx[:,0,1])):
-                    # with_approx = cv2.drawContours(new_threshold, approx, -1, (0,0,255), 5)
-                    # cv2.imshow("Approx feed", with_approx)
-                    # cv2.waitKey(3)
+
                     approx[i,0,1] = approx[i,0,1] + TOP_CUT
 
                 marked_raw = cv2.drawContours(self.raw_cv_image, approx, -1, (0,0,255), 5)
 
-            else :
-                marked_raw = self.raw_cv_image
-            
-            cv2.imshow("Marked raw feed", marked_raw)
-            cv2.waitKey(3)
-            # print(approx)
-            # print (approx.shape)
-            # print(with_approx.shape)
+                print(cv2.contourArea(cntsSorted[-1]))
+                print("----")
 
-        print(cv2.contourArea(cntsSorted[-1]))
-        print("----")
+                cv2.imshow("Seen Contour", marked_raw)
+                cv2.waitKey(3)
 
-        cv2.imshow("HSV feed", hsv_image)
+        
+        cv2.imshow("Marked raw feed", marked_raw)
         cv2.waitKey(3)
 
         return approx
@@ -120,10 +120,10 @@ class comp_driver:
         if self.state == "startup":
             move_command = Twist()
 
-            if(time.time() < self.startup_time + 3):
+            if(time.time() < self.startup_time + 4):
                 move_command.linear.x = 0.2
                 move_command.angular.z = 0.0
-            elif(time.time() < self.startup_time + 6.4):
+            elif(time.time() < self.startup_time + 7.4):
                 move_command.linear.x = 0.0
                 move_command.angular.z = 0.6
             else:
@@ -142,6 +142,9 @@ class comp_driver:
             self.move_bot(move_command)
 
             license_corners = self.seek_license()   
+
+            if time.time() > self.startup_time + 100:
+                self.state = "terminate"
 
         elif self.state == "terminate":
 
@@ -182,6 +185,8 @@ class driver_controller:
             'S' : np.array([0.,0.,0.,1.])
         }
         self.conv_model = models.load_model(save_path)
+        # self.conv_model = self.__create_model()
+        # self.conv_model.load_weights(self.CP_PATH)
 
     def drive(self, img):
         img  = cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), (0,0),
@@ -191,13 +196,13 @@ class driver_controller:
         move = Twist()
         if prediction[0] == 1.:
             move.linear.x = 0.0
-            move.angular.z = 1.0
+            move.angular.z = 0.7
         elif prediction[1] == 1.:
-            move.linear.x = 0.5
+            move.linear.x = 0.3
             move.angular.z = 0.0
         elif prediction[2] == 1.:
             move.linear.x = 0.0
-            move.angular.z = -1.0
+            move.angular.z = -0.7
         else:
             move.linear.x = 0.0
             move.angular.z = 0.0
