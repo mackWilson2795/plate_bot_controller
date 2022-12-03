@@ -3,6 +3,7 @@ import sys
 import rospy
 import cv2
 import os
+import numpy as np
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Twist
 from cv_bridge import CvBridge, CvBridgeError
@@ -25,6 +26,8 @@ class image_producer:
             cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e)
+        cv2.imshow("Drive view", cv_image)
+        cv2.waitKey(1)
         if (self.im_num < self.max_images and self.vel_state != [0.0,0.0] and
                             (self.frame_count >= self.frame_skip or self.vel_state != self.vel_last)):
             print(f"Writing img to file: {self.im_path}{self.im_num:06d}")
@@ -35,11 +38,11 @@ class image_producer:
         self.frame_count += 1
         
     def set_im_num(self):
-        file_list = os.listdir(self.im_path)
+        file_list = [s[-10:-4] for s in os.listdir(self.im_path)]
         list.sort(file_list)
         if (len(file_list) > 0):
-            print(f"Previously saved images detected - starting from image {int(file_list[-1][-10:-4])}")
-            return int(file_list[-1][-10:-4])
+            print(f"Previously saved images detected - starting from image {int(file_list[-1])}")
+            return int(file_list[-1])
         else:
             return 0
 

@@ -179,10 +179,9 @@ class driver_controller:
 
     def __init__(self, save_path = SAVE_PATH) -> None:
         self.one_hot_ref = {
-            'L' : np.array([1.,0.,0.,0.]),
-            'F' : np.array([0.,1.,0.,0.]),
-            'R' : np.array([0.,0.,1.,0.]),
-            'S' : np.array([0.,0.,0.,1.])
+            'L' : np.array([1.,0.,0.]),
+            'F' : np.array([0.,1.,0.]),
+            'R' : np.array([0.,0.,1.]),
         }
         self.conv_model = models.load_model(save_path)
         # self.conv_model = self.__create_model()
@@ -204,6 +203,7 @@ class driver_controller:
             move.linear.x = 0.0
             move.angular.z = -0.7
         else:
+            # TODO: REMOVE (??)
             move.linear.x = 0.0
             move.angular.z = 0.0
         print(f"x: {move.linear.x}\nz: {move.angular.z}")
@@ -216,4 +216,3 @@ try:
 except KeyboardInterrupt:
     print("Shutting Down")
 cv2.destroyAllWindows()
-
