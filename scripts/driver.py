@@ -32,7 +32,7 @@ class comp_driver:
 
     def __init__(self):
 
-        self.state = "startup"
+        self.state = "outer"
         
         self.controller = driver_controller()
 
@@ -144,7 +144,7 @@ class comp_driver:
             license_corners = self.seek_license()   
 
             if time.time() > self.startup_time + 100:
-                self.state = "terminate"
+               self.state = "terminate"
 
         elif self.state == "terminate":
 
@@ -195,13 +195,13 @@ class driver_controller:
         move = Twist()
         if prediction[0] == 1.:
             move.linear.x = 0.0
-            move.angular.z = 0.7
+            move.angular.z = 1.0
         elif prediction[1] == 1.:
-            move.linear.x = 0.3
+            move.linear.x = 0.5
             move.angular.z = 0.0
         elif prediction[2] == 1.:
             move.linear.x = 0.0
-            move.angular.z = -0.7
+            move.angular.z = -1.0
         else:
             # TODO: REMOVE (??)
             move.linear.x = 0.0
