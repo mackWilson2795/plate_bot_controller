@@ -81,6 +81,7 @@ class comp_driver:
 
         contours, hierarchy = cv2.findContours(new_threshold.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+
         approx = None
         marked_raw = self.raw_cv_image
 
