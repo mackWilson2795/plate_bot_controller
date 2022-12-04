@@ -50,6 +50,7 @@ class comp_driver:
         #                                rosgraph_msgs.Clock) 
         time.sleep(1)
 
+        self.pub = rospy.Subscriber('comms', String, self.ped_callback)
         # self.startup_time = self.timer.
         self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
         self.timer_running = True
@@ -76,8 +77,8 @@ class comp_driver:
 
         new_threshold = threshold_image.copy()
 
-        cv2.imshow("Threshold feed", threshold_image)
-        cv2.waitKey(3)
+        # cv2.imshow("Threshold feed", threshold_image)
+        # cv2.waitKey(3)
 
         contours, hierarchy = cv2.findContours(new_threshold.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
@@ -110,8 +111,8 @@ class comp_driver:
                 cv2.waitKey(3)
 
         
-        cv2.imshow("Marked raw feed", marked_raw)
-        cv2.waitKey(3)
+        # cv2.imshow("Marked raw feed", marked_raw)
+        # cv2.waitKey(3)
 
         return approx
 
@@ -147,6 +148,20 @@ class comp_driver:
             # if time.time() > self.startup_time + 100:
             #    self.state = "terminate"
 
+        elif self.state == "ped_stop":
+            move = Twist()
+            move.linear.x = 0.0
+            move.angular.z = 0.0
+            self.move_bot(move)
+
+        elif self.state == "ped_drive":
+            move = Twist()
+            move.linear.x = 0.5
+            move.angular.z = 0.0
+            self.move_bot(move)
+            time.sleep(1.0)
+            self.state = "outer"
+
         elif self.state == "terminate":
 
             if self.timer_running:
@@ -169,13 +184,18 @@ class comp_driver:
         
         # cv2.imshow("raw feed", self.raw_cv_image)
         # cv2.waitKey(3)
+    
+    def ped_callback(self,data):
+        msg = data.data
+        if msg == "stop":
+            print("STOP\n")
+            self.state = "ped_stop"
+        elif msg == "ped_drive":
+            self.state = "ped_drive"
 
 class driver_controller:
     CP_PATH = "/home/fizzer/cnn_trainer/model_cps/"
     SAVE_PATH = "/home/fizzer/cnn_trainer/model_save/"
-    MODEL_X = 180
-    MODEL_Y = 320
-    LEARNING_RATE = 1e-4
     IMG_DOWNSCALE_RATIO = 0.25
 
     def __init__(self, save_path = SAVE_PATH) -> None:
@@ -185,27 +205,27 @@ class driver_controller:
             'R' : np.array([0.,0.,1.]),
         }
         self.conv_model = models.load_model(save_path)
-        # self.conv_model = self.__create_model()
-        # self.conv_model.load_weights(self.CP_PATH)
 
     def drive(self, img):
         img  = cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), (0,0),
                             fx=self.IMG_DOWNSCALE_RATIO, fy=self.IMG_DOWNSCALE_RATIO)
         img = img.reshape(1, len(img), len(img[0]), -1)
         prediction = self.conv_model.predict(img)[0]
+        print(prediction)
         move = Twist()
-        if prediction[0] == 1.:
+        if round(prediction[0]) == 1.:
             move.linear.x = 0.0
             move.angular.z = 1.0
-        elif prediction[1] == 1.:
-            move.linear.x = 0.5
+        elif round(prediction[1]) == 1.:
+            move.linear.x = 0.2
             move.angular.z = 0.0
-        elif prediction[2] == 1.:
+        elif round(prediction[2]) == 1.:
             move.linear.x = 0.0
             move.angular.z = -1.0
         else:
             # TODO: REMOVE (??)
-            move.linear.x = 0.0
+            print("Error - invalid command")
+            move.linear.x = 0.1
             move.angular.z = 0.0
         print(f"x: {move.linear.x}\nz: {move.angular.z}")
         return move

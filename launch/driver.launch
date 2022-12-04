@@ -1,8 +1,12 @@
 <launch>
     <node pkg = "enph353_controller" 
-            type = "driver.py" 
-            name = "driver" 
-            output="screen">
+          type = "driver.py" 
+          name = "driver" 
+          output="screen">
     </node>
-
+    <node pkg = "enph353_controller"
+          type = "ped_handler.py"
+          name = "ped_handler"
+          output = "screen">
+    </node>
 </launch>

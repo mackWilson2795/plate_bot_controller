@@ -10,14 +10,14 @@ from cv_bridge import CvBridge, CvBridgeError
 
 class image_producer:
     def __init__(self):
-        self.im_path = '/home/fizzer/CNN_images/'
+        self.im_path = '/home/fizzer/inner_images/'
         self.vel_state = [0.,0.]
         self.vel_last = [0.,0.]
         self.bridge = CvBridge()
         self.im_num = self.set_im_num()
         self.max_images = 1000000
         self.frame_count = 0
-        self.frame_skip = 2
+        self.frame_skip = 7
         self.image_sub = rospy.Subscriber("/R1/pi_camera/image_raw", Image, self.img_callback)
         self.vel_sub = rospy.Subscriber("/R1/cmd_vel", Twist, self.vel_callback)
     
