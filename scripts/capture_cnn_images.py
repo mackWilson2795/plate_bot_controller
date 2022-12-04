@@ -17,7 +17,7 @@ class image_producer:
         self.im_num = self.set_im_num()
         self.max_images = 1000000
         self.frame_count = 0
-        self.frame_skip = 7
+        self.frame_skip = 2
         self.image_sub = rospy.Subscriber("/R1/pi_camera/image_raw", Image, self.img_callback)
         self.vel_sub = rospy.Subscriber("/R1/cmd_vel", Twist, self.vel_callback)
     

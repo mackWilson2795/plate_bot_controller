@@ -29,12 +29,15 @@ from geometry_msgs.msg import Twist
 # config.gpu_options.allow_growth = True
 
 class comp_driver:
+    OUTER_LOAD_PATH = "/home/fizzer/cnn_trainer/model_save/"
+    INNER_LOAD_PATH = "/home/fizzer/cnn_trainer/inner/model_save/"
 
     def __init__(self):
-
         self.state = "outer"
+        self.ped_count = 0
         
-        self.controller = driver_controller()
+        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.4)
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.5)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -54,8 +57,6 @@ class comp_driver:
         # self.startup_time = self.timer.
         self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
         self.timer_running = True
-
-
 
     def move_bot(self, move_command):
         try:
@@ -118,6 +119,7 @@ class comp_driver:
 
 
     def state_machine(self):
+        print(self.state)
 
         if self.state == "startup":
             move_command = Twist()
@@ -160,7 +162,15 @@ class comp_driver:
             move.angular.z = 0.0
             self.move_bot(move)
             time.sleep(1.0)
-            self.state = "outer"
+            if self.ped_count:
+                self.state = "inner"
+            else:
+                self.ped_count += 1
+                self.state = "outer"
+        
+        elif self.state == "inner":
+            move_command = self.inner_controller.drive(self.raw_cv_image)
+            self.move_bot(move_command)
 
         elif self.state == "terminate":
 
@@ -172,18 +182,12 @@ class comp_driver:
                 self.licenses.publish("TeamEthan,notsafe,-1,AA00")
                 self.timer_running = False
 
-
-
     def callback(self,data):
         try:
             self.raw_cv_image = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
             print(e) #Shouldn't ever get here cause callback gets called with an image
-
         self.state_machine()
-        
-        # cv2.imshow("raw feed", self.raw_cv_image)
-        # cv2.waitKey(3)
     
     def ped_callback(self,data):
         msg = data.data
@@ -194,17 +198,18 @@ class comp_driver:
             self.state = "ped_drive"
 
 class driver_controller:
-    CP_PATH = "/home/fizzer/cnn_trainer/model_cps/"
     SAVE_PATH = "/home/fizzer/cnn_trainer/model_save/"
     IMG_DOWNSCALE_RATIO = 0.25
 
-    def __init__(self, save_path = SAVE_PATH) -> None:
+    def __init__(self, save_path = SAVE_PATH, lin_speed = 0.2, ang_speed = 1.0) -> None:
         self.one_hot_ref = {
             'L' : np.array([1.,0.,0.]),
             'F' : np.array([0.,1.,0.]),
             'R' : np.array([0.,0.,1.]),
         }
         self.conv_model = models.load_model(save_path)
+        self.lin_speed = lin_speed
+        self.ang_speed = ang_speed
 
     def drive(self, img):
         img  = cv2.resize(cv2.cvtColor(img, cv2.COLOR_RGB2GRAY), (0,0),
@@ -215,13 +220,13 @@ class driver_controller:
         move = Twist()
         if round(prediction[0]) == 1.:
             move.linear.x = 0.0
-            move.angular.z = 1.0
+            move.angular.z = self.ang_speed
         elif round(prediction[1]) == 1.:
-            move.linear.x = 0.2
+            move.linear.x = self.lin_speed
             move.angular.z = 0.0
         elif round(prediction[2]) == 1.:
             move.linear.x = 0.0
-            move.angular.z = -1.0
+            move.angular.z = -1 * self.ang_speed
         else:
             # TODO: REMOVE (??)
             print("Error - invalid command")
