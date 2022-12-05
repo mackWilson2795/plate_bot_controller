@@ -35,6 +35,9 @@ class comp_driver:
     def __init__(self):
         self.state = "outer"
         self.ped_count = 0
+        self.startup_time = time.time()
+        self.biggest_plate_size = 0
+        self.analyzed = True
         
         self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.4)
         self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.5)
@@ -69,54 +72,87 @@ class comp_driver:
         BOTTOM_CUT = 550
         LOWER_THRESHOLD = 90
         UPPER_THRESHOLD = 210
-        MIN_CONTOUR_AREA = 9500
-
+        MIN_CONTOUR_AREA = 11000
+    
         cut_image = self.raw_cv_image[TOP_CUT:BOTTOM_CUT,:]
         hsv_image = cv2.cvtColor(cut_image, cv2.COLOR_BGR2HSV)
         blur_image = cv2.GaussianBlur(hsv_image, (5,5), 0)
         threshold_image = cv2.inRange(blur_image, np.array([0,0,LOWER_THRESHOLD]), np.array([0,0,UPPER_THRESHOLD]))
-
-        new_threshold = threshold_image.copy()
-
+    
+        # new_threshold = threshold_image.copy()
+    
         # cv2.imshow("Threshold feed", threshold_image)
         # cv2.waitKey(3)
-
-        contours, hierarchy = cv2.findContours(new_threshold.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+        contours, _ = cv2.findContours(threshold_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
-
+    
         approx = None
         marked_raw = self.raw_cv_image
-
+    
         if len(cntsSorted) > 0 and cv2.contourArea(cntsSorted[-1]) > MIN_CONTOUR_AREA:
             
             max_contour = cntsSorted[-1]
             
             epsilon = 0.01*cv2.arcLength(max_contour,True)
             approx = cv2.approxPolyDP(max_contour,epsilon, True)
-
-            if len(approx) == 4:
-
-                new_threshold = cv2.cvtColor(new_threshold, cv2.COLOR_GRAY2BGR)
-                
-                    
+    
+            if len(approx) is 4:
+    
+                # new_threshold = cv2.cvtColor(new_threshold, cv2.COLOR_GRAY2BGR)
                 for i in range(len(approx[:,0,1])):
-
+    
                     approx[i,0,1] = approx[i,0,1] + TOP_CUT
-
+    
                 marked_raw = cv2.drawContours(self.raw_cv_image, approx, -1, (0,0,255), 5)
-
-                print(cv2.contourArea(cntsSorted[-1]))
-                print("----")
-
-                cv2.imshow("Seen Contour", marked_raw)
-                cv2.waitKey(3)
-
-        
+                # cv2.imshow("Seen Contour", marked_raw)
+                # cv2.waitKey(3)
+    
+        if len(cntsSorted) > 0:
+            print(cv2.contourArea(cntsSorted[-1]))
+            print("----")
         # cv2.imshow("Marked raw feed", marked_raw)
         # cv2.waitKey(3)
-
+    
         return approx
-
+    
+    
+    def check_plate(self, approx):
+        print (self.analyzed)
+        print(self.biggest_plate_size)
+        if approx is None and self.analyzed is False:
+            self.analyze_plate(self.biggest_plate)
+            self.analyzed = True
+        elif approx is None and self.analyzed is True:
+            pass
+        else:
+            if self.analyzed is True:
+                self.analyzed = False
+                self.biggest_plate_size = 0
+    
+            if cv2.contourArea(approx) > self.biggest_plate_size and len(approx) == 4:
+                self.biggest_plate = approx
+                self.best_plate_image = self.raw_cv_image
+                self.biggest_plate_size = cv2.contourArea(approx)
+    
+    # This function utalizes https://arccoder.medium.com/straighten-an-image-of-a-page-using-opencv-313182404b06
+    def analyze_plate(self,approx):
+        sortedApprox = sorted(approx, key = lambda x: x[0,0] + 5*x[0,1])
+        
+        height = 500
+        width = 500
+    
+        finalPoints = [[0,0],[width,0],[0,height],[width,height]]
+        M = cv2.getPerspectiveTransform(np.float32(sortedApprox), np.float32(finalPoints))
+        dst = cv2.warpPerspective(self.best_plate_image, M, (int(width),int(height)+150))
+    
+        cv2.imshow("dst feed", dst)
+        cv2.waitKey(3)
+    
+        plate_height = 150
+        plate_image = dst[dst.shape[0] - plate_height:,:]
+        cv2.imshow("plate feed", plate_image)
+        cv2.waitKey(3)
 
     def state_machine(self):
         print(self.state)
@@ -144,8 +180,8 @@ class comp_driver:
             #Implement pedestrian seeker
             move_command = self.controller.drive(self.raw_cv_image)
             self.move_bot(move_command)
-
             license_corners = self.seek_license()   
+            self.check_plate(license_corners)
 
             # if time.time() > self.startup_time + 100:
             #    self.state = "terminate"
@@ -155,7 +191,6 @@ class comp_driver:
             move.linear.x = 0.0
             move.angular.z = 0.0
             self.move_bot(move)
-
         elif self.state == "ped_drive":
             move = Twist()
             move.linear.x = 0.5
@@ -171,6 +206,8 @@ class comp_driver:
         elif self.state == "inner":
             move_command = self.inner_controller.drive(self.raw_cv_image)
             self.move_bot(move_command)
+            license_corners = self.seek_license()
+            self.check_plate(license_corners)
 
         elif self.state == "terminate":
 
