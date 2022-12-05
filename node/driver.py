@@ -39,8 +39,8 @@ class comp_driver:
         self.biggest_plate_size = 0
         self.analyzed = True
         
-        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.4)
-        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.5)
+        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -155,7 +155,6 @@ class comp_driver:
         cv2.waitKey(3)
 
     def state_machine(self):
-        print(self.state)
 
         if self.state == "startup":
             move_command = Twist()
@@ -210,7 +209,6 @@ class comp_driver:
             self.check_plate(license_corners)
 
         elif self.state == "terminate":
-
             if self.timer_running:
                 move = Twist()
                 move.linear.x = 0
@@ -253,7 +251,6 @@ class driver_controller:
                             fx=self.IMG_DOWNSCALE_RATIO, fy=self.IMG_DOWNSCALE_RATIO)
         img = img.reshape(1, len(img), len(img[0]), -1)
         prediction = self.conv_model.predict(img)[0]
-        print(prediction)
         move = Twist()
         if round(prediction[0]) == 1.:
             move.linear.x = 0.0
