@@ -31,7 +31,11 @@ from geometry_msgs.msg import Twist
 class comp_driver:
  
    def __init__(self):
- 
+       #TODO: remove
+       
+       self.plate_path = "/home/fizzer/plate_images"
+       self.counter = self.set_im_num()
+
        self.state = "outer"
        self.startup_time = time.time()
        self.biggest_plate_size = 0
@@ -60,9 +64,9 @@ class comp_driver:
  
  
    def move_bot(self, move_command):
-       try:
+        try:
            self.mover.publish(move_command)
-       except CvBridgeError as e:
+        except CvBridgeError as e:
            print(e)
  
    def seek_license(self):
@@ -95,7 +99,7 @@ class comp_driver:
            epsilon = 0.01*cv2.arcLength(max_contour,True)
            approx = cv2.approxPolyDP(max_contour,epsilon, True)
  
-           if len(approx) is 4:
+           if len(approx) == 4:
  
                # new_threshold = cv2.cvtColor(new_threshold, cv2.COLOR_GRAY2BGR)
               
@@ -104,16 +108,16 @@ class comp_driver:
  
                    approx[i,0,1] = approx[i,0,1] + TOP_CUT
  
-               marked_raw = cv2.drawContours(self.raw_cv_image, approx, -1, (0,0,255), 5)
+        #        marked_raw = cv2.drawContours(self.raw_cv_image, approx, -1, (0,0,255), 5)
  
               
  
                # cv2.imshow("Seen Contour", marked_raw)
                # cv2.waitKey(3)
  
-       if len(cntsSorted) > 0:
-           print(cv2.contourArea(cntsSorted[-1]))
-           print("----")
+    #    if len(cntsSorted) > 0:
+    #        print(cv2.contourArea(cntsSorted[-1]))
+    #        print("----")
        cv2.imshow("Marked raw feed", marked_raw)
        cv2.waitKey(3)
  
@@ -155,12 +159,24 @@ class comp_driver:
  
        cv2.imshow("dst feed", dst)
        cv2.waitKey(3)
+       cv2.imwrite(f"{self.plate_path}/DST_{self.counter:06d}.jpg", dst)
  
        plate_height = 150
        plate_image = dst[dst.shape[0] - plate_height:,:]
        cv2.imshow("plate feed", plate_image)
        cv2.waitKey(3)
- 
+       cv2.imwrite(f"{self.plate_path}/PLT_{self.counter:06d}.jpg", plate_image)
+       self.counter +=1
+       
+    #TODO: REMOVE
+   def set_im_num(self):
+        file_list = [s[-10:-4] for s in os.listdir(self.plate_path)]
+        list.sort(file_list)
+        if (len(file_list) > 0):
+            print(f"Previously saved images detected - starting from image {int(file_list[-1])}")
+            return int(file_list[-1])
+        else:
+            return 0
  
  
    def state_machine(self):
@@ -186,8 +202,8 @@ class comp_driver:
            #Implement license plate detector and reader
            #Implement licence counter to know when to switch to seeking inner
            #Implement pedestrian seeker
-           move_command = self.controller.drive(self.raw_cv_image)
-           self.move_bot(move_command)
+        #    move_command = self.controller.drive(self.raw_cv_image)
+        #    self.move_bot(move_command)
  
            license_corners = self.seek_license() 
            self.check_plate(license_corners)
