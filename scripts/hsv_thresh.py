@@ -4,11 +4,11 @@ import numpy as np
 import cv2 as cv
 import time
 
-img = cv.imread('/home/fizzer/masker.jpg',cv.IMREAD_COLOR)
+img = cv.imread('/home/fizzer/plate_images/image2.png',cv.IMREAD_COLOR)
 img = cv.medianBlur(img,5)
 
 # Convert BGR to HSV
-hsv = cv.cvtColor(img, cv.COLOR_BGR2HSV)
+img = cv.cvtColor(img, cv.COLOR_BGR2HSV)
 
 uh = 130
 us = 255
@@ -20,7 +20,7 @@ lower_hsv = np.array([lh,ls,lv])
 upper_hsv = np.array([uh,us,uv])
 
 # Threshold the HSV image to get only blue colors
-mask = cv.inRange(hsv, lower_hsv, upper_hsv)
+mask = cv.inRange(img, lower_hsv, upper_hsv)
 window_name = "HSV Calibrator"
 cv.namedWindow(window_name)
 
@@ -54,7 +54,7 @@ print("Loaded images")
 
 while(1):
     # Threshold the HSV image to get only blue colors
-    mask = cv.inRange(hsv, lower_hsv, upper_hsv)
+    mask = cv.inRange(img, lower_hsv, upper_hsv)
     cv.putText(mask,'Lower HSV: [' + str(lh) +',' + str(ls) + ',' + str(lv) + ']', (10,30), font, 0.5, (200,255,155), 1, cv.LINE_AA)
     cv.putText(mask,'Upper HSV: [' + str(uh) +',' + str(us) + ',' + str(uv) + ']', (10,60), font, 0.5, (200,255,155), 1, cv.LINE_AA)
 
