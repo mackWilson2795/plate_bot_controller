@@ -19,13 +19,12 @@ class ped_handler:
         "ls": 250,
         "lv": 250
     }
-    IMG_RESIZE = 0.1
-    VERTICAL_SLICE = ()
-    MIN_CNT_AREA = 5.0
-    PED_CENTER_REGION = (400.,480.)
-    MASK_FRAMES = 40
-    MIN_PED_AREA = 200.0
-    MIN_MOVE_DIST = 10
+    IMG_RESIZE = 0.1 # The scaling factor for downsampling the image when detecting the red line
+    MIN_CNT_AREA = 5.0 # The minimum size of the contour for detecting/stopping at the red line
+    PED_CENTER_REGION = (400.,480.) # The bounds on the width we will check within for the pedestrian
+    MASK_FRAMES = 40 # The number of frames we will train the background mask on before attempting to enter the intersection
+    MIN_PED_AREA = 200.0 # The minimum size of the contour in the background subtracted image that we will consider to be the pedestrian
+    MIN_MOVE_DIST = 10 # The number of pixels we will allow the pedestrian to move before we consider it to not be stationary
     
     def __init__(self):
         self.bridge = CvBridge()
