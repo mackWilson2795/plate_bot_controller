@@ -21,9 +21,11 @@ class ped_handler:
     }
     IMG_RESIZE = 0.1
     VERTICAL_SLICE = ()
-    MIN_CNT_AREA = 4.0
+    MIN_CNT_AREA = 5.0
     PED_CENTER_REGION = (400.,480.)
-    MASK_FRAMES = 10
+    MASK_FRAMES = 40
+    MIN_PED_AREA = 200.0
+    MIN_MOVE_DIST = 10
     
     def __init__(self):
         self.bridge = CvBridge()
@@ -42,10 +44,11 @@ class ped_handler:
     
     def update_mask(self, img):
         # img = cv2.resize(img, (0,0), fx = self.IMG_RESIZE, fy = self.IMG_RESIZE)
-        # cv2.imshow("mask" , fg_mask)
-        # cv2.waitKey(1)
         img = img[200:520, 200:1080]
-        return self.bg_sub.apply(img, np.array([]))
+        fg_mask = self.bg_sub.apply(img, learningRate = -1)
+        cv2.imshow("mask" , fg_mask)
+        cv2.waitKey(1)
+        return fg_mask
     
     def img_callback(self, data):
         # print(self.state)
@@ -84,8 +87,9 @@ class ped_handler:
         if self.state == States.TRACK_PED or self.state == States.WAIT_PED:
             fg_mask = self.update_mask(img) 
             contours, _ = cv2.findContours(fg_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            if len (contours) > 0:
-                cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+            cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+            if len (contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_PED_AREA:
+                print(cv2.contourArea(cnts_sorted[-1]))
                 moment = cv2.moments(cnts_sorted[-1])
                 cX = int((moment["m10"]+0.00001) / (moment["m00"]+0.00001))
                 print(cX, " ", self.prev_cX)
@@ -93,7 +97,7 @@ class ped_handler:
                     print("ped in center")
                     self.state = States.WAIT_PED
                     time.sleep(0.2)
-                elif self.state == States.WAIT_PED and abs(cX - self.prev_cX) < 1:
+                elif self.state == States.WAIT_PED and abs(cX - self.prev_cX) < self.MIN_MOVE_DIST:
                     self.state = States.DRIVE
                 self.prev_cX = cX
         
@@ -103,6 +107,7 @@ class ped_handler:
             if not self.first_crosswalk:
                 self.state = States.FIND_LINE
                 self.first_crosswalk = True
+                self.bg_sub = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
             else:
                 self.state = States.PREP_INNER
 
