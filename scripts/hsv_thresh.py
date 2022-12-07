@@ -4,7 +4,7 @@ import numpy as np
 import cv2 as cv
 import time
 
-img = cv.imread('/home/fizzer/plate_images/image2.png',cv.IMREAD_COLOR)
+img = cv.imread('/home/fizzer/labelled_dsts/DST_000098_P6.png',cv.IMREAD_COLOR)
 img = cv.medianBlur(img,5)
 
 # Convert BGR to HSV
@@ -75,6 +75,6 @@ while(1):
     upper_hsv = np.array([uh,us,uv])
     lower_hsv = np.array([lh,ls,lv])
 
-    time.sleep(.1)
+    time.sleep(0.1)
 
 cv.destroyAllWindows()

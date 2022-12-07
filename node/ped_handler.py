@@ -49,8 +49,8 @@ class ped_handler:
         # img = cv2.resize(img, (0,0), fx = self.IMG_RESIZE, fy = self.IMG_RESIZE)
         img = img[200:520, 200:1080]
         fg_mask = self.bg_sub.apply(img, learningRate = -1)
-        cv2.imshow("mask" , fg_mask)
-        cv2.waitKey(1)
+        # cv2.imshow("mask" , fg_mask)
+        # cv2.waitKey(1)
         return fg_mask
 
     def filter_img(self, img):
@@ -59,7 +59,7 @@ class ped_handler:
         return cv2.inRange(hsv, self.lower_hsv, self.upper_hsv)
     
     def img_callback(self, data):
-        print(self.state)
+        # print(self.state)
         try:
             img = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
@@ -127,8 +127,8 @@ class ped_handler:
             # TODO: Remove vvv
             mask = self.filter_img(img)
             mask = mask[:,len(mask)*2//3:]
-            cv2.imshow("test", img[:,len(img)//2:])
-            cv2.waitKey(1)
+            # cv2.imshow("test", img[:,len(img)//2:])
+            # cv2.waitKey(1)
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
             if len(contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_CAR_AREA:
@@ -148,9 +148,9 @@ class ped_handler:
             fg_mask = self.update_mask(img)
             contours, _ = cv2.findContours(fg_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
-            print(f"Truck mask countour: {cv2.contourArea(cnts_sorted[-1])}")
+            # print(f"Truck mask countour: {cv2.contourArea(cnts_sorted[-1])}")
             if len (contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_TRUCK_AREA:
-                print(cv2.contourArea(cnts_sorted[-1]))
+                # print(cv2.contourArea(cnts_sorted[-1]))
                 moment = cv2.moments(cnts_sorted[-1])
                 cX = int((moment["m10"]+0.00001) / (moment["m00"]+0.00001))
                 print(cX)
