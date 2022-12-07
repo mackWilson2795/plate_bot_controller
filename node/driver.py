@@ -38,6 +38,10 @@ class comp_driver:
         self.startup_time = time.time()
         self.biggest_plate_size = 0
         self.analyzed = True
+
+        #TODO: remove
+        self.plate_path = "/home/fizzer/plate_images"
+        self.counter = self.set_im_num()
         
         self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
         self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.45, ang_speed=0.6)
@@ -148,10 +152,23 @@ class comp_driver:
         plate_image = dst[dst.shape[0] - plate_height:,:]
         cv2.imshow("plate feed", plate_image)
         cv2.waitKey(3)
+        # TODO: remove
+        cv2.imwrite(f"{self.plate_path}/PLT_{self.counter:06d}.jpg", plate_image)
+        self.counter +=1
+
+    
+    #TODO: REMOVE
+    def set_im_num(self):
+        file_list = [s[-10:-4] for s in os.listdir(self.plate_path)]
+        list.sort(file_list)
+        if (len(file_list) > 0):
+            print(f"Previously saved images detected - starting from image {int(file_list[-1])}")
+            return int(file_list[-1])
+        else:
+            return 0
 
     def state_machine(self):
-        print(f"Drive state: {self.state}")
-
+        # print(f"Drive state: {self.state}")
         if self.state == "startup":
             move_command = Twist()
 
@@ -226,6 +243,16 @@ class comp_driver:
             self.state = "ped_drive"
         elif msg == "drive_inner":
             self.state = "inner"
+
+class plate_reader:
+    SAVE_PATH = "/home/fizzer/cnn_trainer/letter_model/save/"
+
+    def __init__(self, save_path = SAVE_PATH):
+        self.conv_model = models.load_model(save_path)
+    
+    def predict(self, img):
+        # TODO: implement
+        pass
 
 class driver_controller:
     SAVE_PATH = "/home/fizzer/cnn_trainer/model_save/"
