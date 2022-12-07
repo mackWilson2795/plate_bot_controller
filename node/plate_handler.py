@@ -34,6 +34,7 @@ class plate_handler:
     DST_PATH = "/home/fizzer/cnn_trainer/dst_model/save/"
 
     def __init__(self):
+        time.sleep(3)
         self.plate_reader = plate_reader()
         self.dst_reader = plate_reader()
         self.plate_lower = np.array([115,80,90])
