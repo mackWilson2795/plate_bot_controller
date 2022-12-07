@@ -38,7 +38,8 @@ class comp_driver:
         # self.counter = self.set_im_num()
 
         self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
-
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.40, ang_speed=0.6)
+        
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
                                         queue_size = 1)
@@ -263,7 +264,6 @@ class comp_driver:
             time.sleep(1.0)
             if self.ped_count:
                 del(self.controller)
-                self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.40, ang_speed=0.6)
                 self.state = "inner"
             else:
                 self.ped_count += 1
