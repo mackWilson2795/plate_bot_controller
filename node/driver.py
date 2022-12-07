@@ -40,7 +40,7 @@ class comp_driver:
         self.analyzed = True
         
         self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
-        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.45, ang_speed=0.6)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -79,11 +79,6 @@ class comp_driver:
         blur_image = cv2.GaussianBlur(hsv_image, (5,5), 0)
         threshold_image = cv2.inRange(blur_image, np.array([0,0,LOWER_THRESHOLD]), np.array([0,0,UPPER_THRESHOLD]))
     
-        # new_threshold = threshold_image.copy()
-    
-        # cv2.imshow("Threshold feed", threshold_image)
-        # cv2.waitKey(3)
-    
         contours, _ = cv2.findContours(threshold_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
     
@@ -109,7 +104,7 @@ class comp_driver:
                 # cv2.waitKey(3)
     
         if len(cntsSorted) > 0:
-            print(cv2.contourArea(cntsSorted[-1]))
+            print(f"Plate contour: {cv2.contourArea(cntsSorted[-1])}")
             print("----")
         # cv2.imshow("Marked raw feed", marked_raw)
         # cv2.waitKey(3)
@@ -155,6 +150,7 @@ class comp_driver:
         cv2.waitKey(3)
 
     def state_machine(self):
+        print(f"Drive state: {self.state}")
 
         if self.state == "startup":
             move_command = Twist()
@@ -181,9 +177,6 @@ class comp_driver:
             self.move_bot(move_command)
             license_corners = self.seek_license()   
             self.check_plate(license_corners)
-
-            # if time.time() > self.startup_time + 100:
-            #    self.state = "terminate"
 
         elif self.state == "ped_stop":
             move = Twist()
@@ -231,6 +224,8 @@ class comp_driver:
             self.state = "ped_stop"
         elif msg == "ped_drive":
             self.state = "ped_drive"
+        elif msg == "drive_inner":
+            self.state = "inner"
 
 class driver_controller:
     SAVE_PATH = "/home/fizzer/cnn_trainer/model_save/"
