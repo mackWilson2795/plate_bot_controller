@@ -251,8 +251,7 @@ class plate_reader:
         self.conv_model = models.load_model(save_path)
     
     def predict(self, img):
-        # TODO: implement
-        pass
+        return self.conv_model.predict(img)[0]
 
 class driver_controller:
     SAVE_PATH = "/home/fizzer/cnn_trainer/model_save/"
