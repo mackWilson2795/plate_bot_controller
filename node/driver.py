@@ -61,8 +61,8 @@ class comp_driver:
         time.sleep(1)
 
         self.pub = rospy.Subscriber('comms', String, self.ped_callback)
-        # self.startup_time = self.timer.
-        self.licenses.publish("TeamEthan,notsafe,0,AA00") #This should start the timer, ask Miti what license plate number to use
+
+        self.licenses.publish("TeamEthan,notsafe,0,AA00") 
         self.timer_running = True
 
     def move_bot(self, move_command):
@@ -87,7 +87,7 @@ class comp_driver:
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
     
         approx = None
-        marked_raw = self.raw_cv_image
+        # marked_raw = self.raw_cv_image
     
         if len(cntsSorted) > 0 and cv2.contourArea(cntsSorted[-1]) > MIN_CONTOUR_AREA:
             
@@ -98,18 +98,17 @@ class comp_driver:
     
             if len(approx) is 4:
     
-                # new_threshold = cv2.cvtColor(new_threshold, cv2.COLOR_GRAY2BGR)
                 for i in range(len(approx[:,0,1])):
     
                     approx[i,0,1] = approx[i,0,1] + TOP_CUT
     
-                marked_raw = cv2.drawContours(self.raw_cv_image, approx, -1, (0,0,255), 5)
+                # marked_raw = cv2.drawContours(self.raw_cv_image, approx, -1, (0,0,255), 5)
                 # cv2.imshow("Seen Contour", marked_raw)
                 # cv2.waitKey(3)
     
-        if len(cntsSorted) > 0:
-            print(f"Plate contour: {cv2.contourArea(cntsSorted[-1])}")
-            print("----")
+        # if len(cntsSorted) > 0:
+        #     print(f"Plate contour: {cv2.contourArea(cntsSorted[-1])}")
+        #     print("----")
         # cv2.imshow("Marked raw feed", marked_raw)
         # cv2.waitKey(3)
     
@@ -117,8 +116,8 @@ class comp_driver:
     
     
     def check_plate(self, approx):
-        print (self.analyzed)
-        print(self.biggest_plate_size)
+        # print (self.analyzed)
+        # print(self.biggest_plate_size)
         if approx is None and self.analyzed is False:
             self.analyze_plate(self.biggest_plate)
             self.analyzed = True
@@ -134,7 +133,7 @@ class comp_driver:
                 self.best_plate_image = self.raw_cv_image
                 self.biggest_plate_size = cv2.contourArea(approx)
     
-    # This function utalizes https://arccoder.medium.com/straighten-an-image-of-a-page-using-opencv-313182404b06
+    # This function utilizes https://arccoder.medium.com/straighten-an-image-of-a-page-using-opencv-313182404b06
     def analyze_plate(self,approx):
         sortedApprox = sorted(approx, key = lambda x: x[0,0] + 5*x[0,1])
         
@@ -144,28 +143,94 @@ class comp_driver:
         finalPoints = [[0,0],[width,0],[0,height],[width,height]]
         M = cv2.getPerspectiveTransform(np.float32(sortedApprox), np.float32(finalPoints))
         dst = cv2.warpPerspective(self.best_plate_image, M, (int(width),int(height)+150))
-    
-        cv2.imshow("dst feed", dst)
-        cv2.waitKey(3)
+
+        # This was just being used to display and save the licence plates
+        # cv2.imshow("dst feed", dst)
+        # cv2.waitKey(3)
     
         plate_height = 150
         plate_image = dst[dst.shape[0] - plate_height:,:]
-        cv2.imshow("plate feed", plate_image)
-        cv2.waitKey(3)
-        # TODO: remove
-        cv2.imwrite(f"{self.plate_path}/PLT_{self.counter:06d}.jpg", plate_image)
-        self.counter +=1
+
+        # This was just being used to display and save the licence plates
+        # cv2.imshow("plate feed", plate_image)
+        # cv2.waitKey(3)
+        # # TODO: remove
+        # cv2.imwrite(f"{self.plate_path}/PLT_{self.counter:06d}.jpg", plate_image)
+        # self.counter +=1
+
+        self.make_CNN_chars(dst, plate_image)
+    def make_CNN_chars(self,full_image, plate_image):
+       plate_lower = np.array([115,80,90])
+       plate_upper = np.array([122,255,205])
+       full_lower = np.array([0,0,0])
+       full_upper = np.array([0,0,90])
+ 
+       hsv_full = cv2.cvtColor(full_image, cv2.COLOR_BGR2HSV)
+       hsv_plate = cv2.cvtColor(plate_image, cv2.COLOR_BGR2HSV)
+       mask_full = cv2.inRange(hsv_full, full_lower, full_upper)
+       mask_plate = cv2.inRange(hsv_plate, plate_lower, plate_upper)
+ 
+       cv2.imshow("cut plate feed", mask_plate)
+       cv2.waitKey(3)
+       cv2.imshow("full plate feed", mask_full)
+       cv2.waitKey(3)
+ 
+       #TODO: pass both the license plate identifier number image and a
+       #list of the different characters on the plate images to
+       #read_licence
+    
+    def read_licence(self, plate_identifier_image, plate_char_images):
+       #TODO: initialize self.submission_timer to 0 in whatever object it belongs to
+ 
+       encoder_options = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+       encoder_len = len(encoder_options)
+ 
+       def zero_hot(len):
+           return np.zeros(len, dtype=int)
+ 
+       if time.time() > self.submission_timer + 2:
+ 
+           identity = encoder_options[np.argmax(self.plate_identifier_guesses)]
+           char0 = encoder_options[np.argmax(self.plate_char_guesses[0])]
+           char1 = encoder_options[np.argmax(self.plate_char_guesses[1])]
+           char2 = encoder_options[np.argmax(self.plate_char_guesses[2])]
+           char3 = encoder_options[np.argmax(self.plate_char_guesses[3])]
+ 
+          
+ 
+           #This exists in driver.py so this call needs to link to it somehow
+           self.licenses.publish(str('TeamEthan,notsafe,' + identity + ',' + char0
+                                                                           + char1
+                                                                           + char2
+                                                                           +char3))
+ 
+           self.plate_identifier_guesses = zero_hot(encoder_len)
+           self.plate_char_guesses = [zero_hot(encoder_len),
+                                      zero_hot(encoder_len),
+                                      zero_hot(encoder_len),
+                                      zero_hot(encoder_len)]
+      
+       #CNN here is meant to pass the thing in brackets to the CNN and get pack a 36 long 1 hot array of the CNN's guess
+       plate_identifier_guess = CNN(plate_identifier_image)
+       plate_char_guesses = CNN(plate_char_images)
+ 
+       self.plate_identifier_guesses += plate_identifier_guess
+ 
+       for char, i in enumerate(plate_char_guesses):
+           self.plate_char_guesses[i] += char
+ 
+       self.submission_timer = time.time()
 
     
-    #TODO: REMOVE
-    def set_im_num(self):
-        file_list = [s[-10:-4] for s in os.listdir(self.plate_path)]
-        list.sort(file_list)
-        if (len(file_list) > 0):
-            print(f"Previously saved images detected - starting from image {int(file_list[-1])}")
-            return int(file_list[-1])
-        else:
-            return 0
+    # #TODO: REMOVE
+    # def set_im_num(self):
+    #     file_list = [s[-10:-4] for s in os.listdir(self.plate_path)]
+    #     list.sort(file_list)
+    #     if (len(file_list) > 0):
+    #         print(f"Previously saved images detected - starting from image {int(file_list[-1])}")
+    #         return int(file_list[-1])
+    #     else:
+    #         return 0
 
     def state_machine(self):
         # print(f"Drive state: {self.state}")
@@ -186,10 +251,6 @@ class comp_driver:
             self.move_bot(move_command)
 
         elif self.state == "outer":
-            #Implement imitation learning mover
-            #Implement license plate detector and reader
-            #Implement licence counter to know when to switch to seeking inner
-            #Implement pedestrian seeker
             move_command = self.controller.drive(self.raw_cv_image)
             self.move_bot(move_command)
             license_corners = self.seek_license()   
@@ -200,6 +261,7 @@ class comp_driver:
             move.linear.x = 0.0
             move.angular.z = 0.0
             self.move_bot(move)
+            
         elif self.state == "ped_drive":
             move = Twist()
             move.linear.x = 0.5
