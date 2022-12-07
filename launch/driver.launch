@@ -9,4 +9,9 @@
           name = "ped_handler"
           output = "screen">
     </node>
+    <node pkg = "enph353_controller"
+          type = "plate_handler.py"
+          name = "plate_handler"
+          output = "screen">
+    </node>
 </launch>

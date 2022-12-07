@@ -17,16 +17,9 @@ from tensorflow.keras import optimizers
 from tensorflow.keras import callbacks
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras import backend
-from tensorflow.compat.v1 import ConfigProto
 import cv2
 import numpy as np
 from geometry_msgs.msg import Twist
-# For Mack PC
-# !export "--xla_gpu_cuda_data_dir=/usr/lib/cuda/"
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-# os.environ["XLA_FLAGS"] = "--xla_gpu_cuda_data_dir=/usr/lib/cuda/"
-# config = ConfigProto()
-# config.gpu_options.allow_growth = True
 
 class comp_driver:
     OUTER_LOAD_PATH = "/home/fizzer/cnn_trainer/model_save/"
@@ -36,15 +29,15 @@ class comp_driver:
         self.state = "outer"
         self.ped_count = 0
         self.startup_time = time.time()
+        # TODO: remove:
         self.biggest_plate_size = 0
         self.analyzed = True
 
         #TODO: remove
-        self.plate_path = "/home/fizzer/plate_images"
-        self.counter = self.set_im_num()
-        
+        # self.plate_path = "/home/fizzer/plate_images"
+        # self.counter = self.set_im_num()
+
         self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
-        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.45, ang_speed=0.6)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -96,7 +89,7 @@ class comp_driver:
             epsilon = 0.01*cv2.arcLength(max_contour,True)
             approx = cv2.approxPolyDP(max_contour,epsilon, True)
     
-            if len(approx) is 4:
+            if len(approx) == 4:
     
                 for i in range(len(approx[:,0,1])):
     
@@ -160,66 +153,66 @@ class comp_driver:
 
         self.make_CNN_chars(dst, plate_image)
     def make_CNN_chars(self,full_image, plate_image):
-       plate_lower = np.array([115,80,90])
-       plate_upper = np.array([122,255,205])
-       full_lower = np.array([0,0,0])
-       full_upper = np.array([0,0,90])
- 
-       hsv_full = cv2.cvtColor(full_image, cv2.COLOR_BGR2HSV)
-       hsv_plate = cv2.cvtColor(plate_image, cv2.COLOR_BGR2HSV)
-       mask_full = cv2.inRange(hsv_full, full_lower, full_upper)
-       mask_plate = cv2.inRange(hsv_plate, plate_lower, plate_upper)
- 
-       cv2.imshow("cut plate feed", mask_plate)
-       cv2.waitKey(3)
-       cv2.imshow("full plate feed", mask_full)
-       cv2.waitKey(3)
+        plate_lower = np.array([115,80,90])
+        plate_upper = np.array([122,255,205])
+        full_lower = np.array([0,0,0])
+        full_upper = np.array([0,0,90])
+    
+        hsv_full = cv2.cvtColor(full_image, cv2.COLOR_BGR2HSV)
+        hsv_plate = cv2.cvtColor(plate_image, cv2.COLOR_BGR2HSV)
+        mask_full = cv2.inRange(hsv_full, full_lower, full_upper)
+        mask_plate = cv2.inRange(hsv_plate, plate_lower, plate_upper)
+    
+        cv2.imshow("cut plate feed", mask_plate)
+        cv2.waitKey(3)
+        cv2.imshow("full plate feed", mask_full)
+        cv2.waitKey(3)
  
        #TODO: pass both the license plate identifier number image and a
        #list of the different characters on the plate images to
        #read_licence
     
     def read_licence(self, plate_identifier_image, plate_char_images):
-       #TODO: initialize self.submission_timer to 0 in whatever object it belongs to
- 
-       encoder_options = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-       encoder_len = len(encoder_options)
- 
-       def zero_hot(len):
-           return np.zeros(len, dtype=int)
- 
-       if time.time() > self.submission_timer + 2:
- 
-           identity = encoder_options[np.argmax(self.plate_identifier_guesses)]
-           char0 = encoder_options[np.argmax(self.plate_char_guesses[0])]
-           char1 = encoder_options[np.argmax(self.plate_char_guesses[1])]
-           char2 = encoder_options[np.argmax(self.plate_char_guesses[2])]
-           char3 = encoder_options[np.argmax(self.plate_char_guesses[3])]
- 
-          
- 
-           #This exists in driver.py so this call needs to link to it somehow
-           self.licenses.publish(str('TeamEthan,notsafe,' + identity + ',' + char0
-                                                                           + char1
-                                                                           + char2
-                                                                           +char3))
- 
-           self.plate_identifier_guesses = zero_hot(encoder_len)
-           self.plate_char_guesses = [zero_hot(encoder_len),
-                                      zero_hot(encoder_len),
-                                      zero_hot(encoder_len),
-                                      zero_hot(encoder_len)]
-      
-       #CNN here is meant to pass the thing in brackets to the CNN and get pack a 36 long 1 hot array of the CNN's guess
-       plate_identifier_guess = CNN(plate_identifier_image)
-       plate_char_guesses = CNN(plate_char_images)
- 
-       self.plate_identifier_guesses += plate_identifier_guess
- 
-       for char, i in enumerate(plate_char_guesses):
-           self.plate_char_guesses[i] += char
- 
-       self.submission_timer = time.time()
+        #TODO: initialize self.submission_timer to 0 in whatever object it belongs to
+    
+        encoder_options = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        encoder_len = len(encoder_options)
+    
+        def zero_hot(len):
+            return np.zeros(len, dtype=int)
+    
+        if time.time() > self.submission_timer + 2:
+    
+            identity = encoder_options[np.argmax(self.plate_identifier_guesses)]
+            char0 = encoder_options[np.argmax(self.plate_char_guesses[0])]
+            char1 = encoder_options[np.argmax(self.plate_char_guesses[1])]
+            char2 = encoder_options[np.argmax(self.plate_char_guesses[2])]
+            char3 = encoder_options[np.argmax(self.plate_char_guesses[3])]
+    
+            
+    
+            #This exists in driver.py so this call needs to link to it somehow
+            self.licenses.publish(str('TeamEthan,notsafe,' + identity + ',' + char0
+                                                                            + char1
+                                                                            + char2
+                                                                            +char3))
+    
+            self.plate_identifier_guesses = zero_hot(encoder_len)
+            self.plate_char_guesses = [zero_hot(encoder_len),
+                                        zero_hot(encoder_len),
+                                        zero_hot(encoder_len),
+                                        zero_hot(encoder_len)]
+        
+        #CNN here is meant to pass the thing in brackets to the CNN and get pack a 36 long 1 hot array of the CNN's guess
+        plate_identifier_guess = CNN(plate_identifier_image)
+        plate_char_guesses = CNN(plate_char_images)
+    
+        self.plate_identifier_guesses += plate_identifier_guess
+    
+        for char, i in enumerate(plate_char_guesses):
+            self.plate_char_guesses[i] += char
+    
+        self.submission_timer = time.time()
 
     
     # #TODO: REMOVE
@@ -253,8 +246,8 @@ class comp_driver:
         elif self.state == "outer":
             move_command = self.controller.drive(self.raw_cv_image)
             self.move_bot(move_command)
-            license_corners = self.seek_license()   
-            self.check_plate(license_corners)
+            # license_corners = self.seek_license()   
+            # self.check_plate(license_corners)
 
         elif self.state == "ped_stop":
             move = Twist()
@@ -269,6 +262,8 @@ class comp_driver:
             self.move_bot(move)
             time.sleep(1.0)
             if self.ped_count:
+                del(self.controller)
+                self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.40, ang_speed=0.6)
                 self.state = "inner"
             else:
                 self.ped_count += 1
@@ -277,8 +272,8 @@ class comp_driver:
         elif self.state == "inner":
             move_command = self.inner_controller.drive(self.raw_cv_image)
             self.move_bot(move_command)
-            license_corners = self.seek_license()
-            self.check_plate(license_corners)
+            # license_corners = self.seek_license()
+            # self.check_plate(license_corners)
 
         elif self.state == "terminate":
             if self.timer_running:
@@ -306,6 +301,7 @@ class comp_driver:
         elif msg == "drive_inner":
             self.state = "inner"
 
+#TODO: remove
 class plate_reader:
     SAVE_PATH = "/home/fizzer/cnn_trainer/letter_model/save/"
 
