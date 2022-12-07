@@ -109,7 +109,7 @@ class comp_driver:
                 # cv2.waitKey(3)
     
         if len(cntsSorted) > 0:
-            print(cv2.contourArea(cntsSorted[-1]))
+            print(f"Plate contour: {cv2.contourArea(cntsSorted[-1])}")
             print("----")
         # cv2.imshow("Marked raw feed", marked_raw)
         # cv2.waitKey(3)
@@ -155,6 +155,7 @@ class comp_driver:
         cv2.waitKey(3)
 
     def state_machine(self):
+        print(f"Drive state: {self.state}")
 
         if self.state == "startup":
             move_command = Twist()
@@ -181,9 +182,6 @@ class comp_driver:
             self.move_bot(move_command)
             license_corners = self.seek_license()   
             self.check_plate(license_corners)
-
-            # if time.time() > self.startup_time + 100:
-            #    self.state = "terminate"
 
         elif self.state == "ped_stop":
             move = Twist()
@@ -231,6 +229,8 @@ class comp_driver:
             self.state = "ped_stop"
         elif msg == "ped_drive":
             self.state = "ped_drive"
+        elif msg == "drive_inner":
+            self.state = "inner"
 
 class driver_controller:
     SAVE_PATH = "/home/fizzer/cnn_trainer/model_save/"

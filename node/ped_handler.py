@@ -21,9 +21,12 @@ class ped_handler:
     }
     IMG_RESIZE = 0.1 # The scaling factor for downsampling the image when detecting the red line
     MIN_CNT_AREA = 5.0 # The minimum size of the contour for detecting/stopping at the red line
-    PED_CENTER_REGION = (400.,480.) # The bounds on the width we will check within for the pedestrian
-    MASK_FRAMES = 40 # The number of frames we will train the background mask on before attempting to enter the intersection
+    MIN_CAR_AREA = 150.0 # The minimum size of the counter for detecting/stopping before the inner loop
     MIN_PED_AREA = 200.0 # The minimum size of the contour in the background subtracted image that we will consider to be the pedestrian
+    MIN_TRUCK_AREA = 2000.0 # The minimum size of the contour in the background subtracted image that we will consider to be the pedestrian
+    PED_CENTER_REGION = (400.,480.) # The bounds on the width we will check within for the pedestrian
+    TRUCK_CENTER_REGION = (400.,480.) # The bounds on the width we will check within for the truck
+    MASK_FRAMES = 40 # The number of frames we will train the background mask on before attempting to enter the intersection
     MIN_MOVE_DIST = 10 # The number of pixels we will allow the pedestrian to move before we consider it to not be stationary
     
     def __init__(self):
@@ -35,6 +38,7 @@ class ped_handler:
         self.lower_hsv = np.array([self.HSV_THRESH["lh"], self.HSV_THRESH["ls"],self.HSV_THRESH["lv"]])
         self.upper_hsv = np.array([self.HSV_THRESH["uh"], self.HSV_THRESH["us"],self.HSV_THRESH["uv"]])
         self.state = States.FIND_LINE
+        # self.state = States.PREP_INNER
         self.bg_sub = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
         self.mask_count = 0
         self.prev_cX = 0
@@ -48,9 +52,14 @@ class ped_handler:
         cv2.imshow("mask" , fg_mask)
         cv2.waitKey(1)
         return fg_mask
+
+    def filter_img(self, img):
+        downsize = cv2.resize(img, (0,0), fx = self.IMG_RESIZE, fy = self.IMG_RESIZE)
+        hsv = cv2.cvtColor(downsize, cv2.COLOR_BGR2HSV)
+        return cv2.inRange(hsv, self.lower_hsv, self.upper_hsv)
     
     def img_callback(self, data):
-        # print(self.state)
+        print(self.state)
         try:
             img = self.bridge.imgmsg_to_cv2(data, "bgr8")
         except CvBridgeError as e:
@@ -58,9 +67,7 @@ class ped_handler:
         img = cv2.GaussianBlur(img, (5,5), cv2.BORDER_DEFAULT)
 
         if self.state == States.FIND_LINE or self.state == States.PREP_STOP: 
-            downsize = cv2.resize(img, (0,0), fx = self.IMG_RESIZE, fy = self.IMG_RESIZE)
-            hsv = cv2.cvtColor(downsize, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv, self.lower_hsv, self.upper_hsv)
+            mask = self.filter_img(img)
             contours, _ = cv2.findContours(mask, 
                                                     cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
@@ -95,28 +102,63 @@ class ped_handler:
                 if self.PED_CENTER_REGION[0] <= cX <= self.PED_CENTER_REGION[1]:
                     print("ped in center")
                     self.state = States.WAIT_PED
-                    time.sleep(0.2)
-                elif self.state == States.WAIT_PED and abs(cX - self.prev_cX) < self.MIN_MOVE_DIST:
+                    time.sleep(0.5)
                     self.state = States.DRIVE
-                self.prev_cX = cX
+                # elif self.state == States.WAIT_PED and abs(cX - self.prev_cX) < self.MIN_MOVE_DIST:
+                # elif self.state == States.WAIT_PED:
+                #    self.state = States.DRIVE
+                # self.prev_cX = cX
         
         if self.state == States.DRIVE:
             self.pub.publish("ped_drive")
-            time.sleep(15)
+            time.sleep(1)
             if not self.first_crosswalk:
                 self.state = States.FIND_LINE
                 self.first_crosswalk = True
                 self.bg_sub = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
             else:
+                self.lower_hsv = np.array([119,206,114])
+                self.upper_hsv = np.array([120,217,126])
+                self.bg_sub = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
                 self.state = States.PREP_INNER
-
-                # cY = int(moment["m01"] / moment["m00"])
-                # print(img.shape)
-                # cv2.circle(img, (cX,cY), 3, (255,0,0), -1)
-                # cv2.imshow("mask", fg_mask)
-                # cv2.imshow("dot", img)
-                # cv2.waitKey(1)
-
+                time.sleep(3)
+        
+        if self.state == States.PREP_INNER:
+            # TODO: Remove vvv
+            mask = self.filter_img(img)
+            mask = mask[:,len(mask)*2//3:]
+            cv2.imshow("test", img[:,len(img)//2:])
+            cv2.waitKey(1)
+            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+            if len(contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_CAR_AREA:
+                # print(f"Car contour:{cv2.contourArea(cnts_sorted[-1])}")
+                self.pub.publish("stop")
+                self.state = States.TRUCK_MASK
+                time.sleep(0.3)
+        
+        if self.state == States.TRUCK_MASK:
+            fg_mask = self.update_mask(img)
+            self.mask_count += 1
+            if self.mask_count > self.MASK_FRAMES:
+                self.state = States.WAIT_TRUCK
+                self.mask_count = 0
+        
+        if self.state == States.WAIT_TRUCK:
+            fg_mask = self.update_mask(img)
+            contours, _ = cv2.findContours(fg_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
+            print(f"Truck mask countour: {cv2.contourArea(cnts_sorted[-1])}")
+            if len (contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_TRUCK_AREA:
+                print(cv2.contourArea(cnts_sorted[-1]))
+                moment = cv2.moments(cnts_sorted[-1])
+                cX = int((moment["m10"]+0.00001) / (moment["m00"]+0.00001))
+                print(cX)
+                if self.TRUCK_CENTER_REGION[0] <= cX <= self.TRUCK_CENTER_REGION[1]:
+                    print("Truck in center")
+                    time.sleep(0.5)
+                    self.state = States.DRIVE_INNER
+                    self.pub.publish("drive_inner")
 
 class States(Enum):
     FIND_LINE = auto()
@@ -126,6 +168,9 @@ class States(Enum):
     WAIT_PED = auto()
     DRIVE = auto()
     PREP_INNER = auto()
+    WAIT_TRUCK = auto()
+    TRUCK_MASK = auto()
+    DRIVE_INNER = auto()
         
 rospy.init_node('ped_handler', anonymous = True)
 ped = ped_handler()
