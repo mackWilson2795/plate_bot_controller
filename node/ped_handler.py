@@ -26,7 +26,7 @@ class ped_handler:
     MIN_TRUCK_AREA = 2000.0 # The minimum size of the contour in the background subtracted image that we will consider to be the pedestrian
     PED_CENTER_REGION = (400.,480.) # The bounds on the width we will check within for the pedestrian
     TRUCK_CENTER_REGION = (400.,480.) # The bounds on the width we will check within for the truck
-    MASK_FRAMES = 40 # The number of frames we will train the background mask on before attempting to enter the intersection
+    MASK_FRAMES = 30 # The number of frames we will train the background mask on before attempting to enter the intersection
     MIN_MOVE_DIST = 10 # The number of pixels we will allow the pedestrian to move before we consider it to not be stationary
     
     def __init__(self):

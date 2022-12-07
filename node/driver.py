@@ -40,7 +40,7 @@ class comp_driver:
         self.analyzed = True
         
         self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
-        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.35, ang_speed=0.6)
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.45, ang_speed=0.6)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -78,11 +78,6 @@ class comp_driver:
         hsv_image = cv2.cvtColor(cut_image, cv2.COLOR_BGR2HSV)
         blur_image = cv2.GaussianBlur(hsv_image, (5,5), 0)
         threshold_image = cv2.inRange(blur_image, np.array([0,0,LOWER_THRESHOLD]), np.array([0,0,UPPER_THRESHOLD]))
-    
-        # new_threshold = threshold_image.copy()
-    
-        # cv2.imshow("Threshold feed", threshold_image)
-        # cv2.waitKey(3)
     
         contours, _ = cv2.findContours(threshold_image.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         cntsSorted = sorted(contours, key=lambda x: cv2.contourArea(x))
