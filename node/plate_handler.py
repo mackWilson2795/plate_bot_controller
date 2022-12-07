@@ -30,6 +30,7 @@ class plate_handler:
     MIN_CONTOUR_AREA = 11000
     KERNEL = np.ones((3,3), np.uint8)
     ONE_HOT_REF = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    DST_REF = "12345678"
     CHAR_DIMS = (75,100)
     DST_PATH = "/home/fizzer/cnn_trainer/dst_model/save/"
 
@@ -190,7 +191,7 @@ class plate_handler:
         self.simple_predict(dst_set, plt_set)
 
     def simple_predict(self, dst, plts):
-        identifier = self.ONE_HOT_REF[np.argmax(self.dst_reader.predict(dst))]
+        identifier = self.DST_REF[np.argmax(self.dst_reader.predict(dst))]
         plt_chars = [self.plate_reader.predict(plt) for plt in plts]
         char0 = self.ONE_HOT_REF[np.argmax(plt_chars[0])]
         char1 = self.ONE_HOT_REF[np.argmax(plt_chars[1])]
