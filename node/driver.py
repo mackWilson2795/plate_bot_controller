@@ -37,8 +37,8 @@ class comp_driver:
         # self.plate_path = "/home/fizzer/plate_images"
         # self.counter = self.set_im_num()
 
-        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.20, ang_speed=0.5)
-        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.30, ang_speed=0.5)
+        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.20, ang_speed=0.50)
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.27, ang_speed=0.50)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,

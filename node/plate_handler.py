@@ -22,6 +22,8 @@ import numpy as np
 from geometry_msgs.msg import Twist
 from enum import Enum, auto
 
+
+
 class plate_handler:
     TOP_CUT = 350
     BOTTOM_CUT = 550
@@ -36,16 +38,30 @@ class plate_handler:
 
     def __init__(self):
         time.sleep(3)
+
+
+        self.ID_guesses = np.zeros(8,dtype=int)
+        self.Char_guesses = [np.zeros(36,dtype=int),
+                        np.zeros(36 , dtype=int),
+                        np.zeros(36,dtype=int),
+                        np.zeros(36,dtype=int)]
+        self.final_countdown = False
+
+
         self.plate_reader = plate_reader()
-        self.dst_reader = plate_reader()
+        self.dst_reader = plate_reader(self.DST_PATH)
         self.plate_lower = np.array([115,80,90])
-        self.plate_upper = np.array([122,255,205])
+        self.plate_upper = np.array([130,255,205])
         self.full_lower = np.array([0,0,0])
         self.full_upper = np.array([0,0,90])
         self.biggest_plate_size = 0
         self.analyzed = True
         self.state = States.FIND_PLATES
         self.submission_timer = 0
+        self.first_plate = True
+        encoder_len = len(self.ONE_HOT_REF)
+        identifier_len = len(self.DST_PATH)
+        
 
         self.bridge = CvBridge()
         self.image_sub = rospy.Subscriber("/R1/pi_camera/image_raw",
@@ -72,9 +88,26 @@ class plate_handler:
     
     def state_machine(self):
         print(self.state)
-        if self.state == States.FIND_PLATES:
+        if self.final_countdown and time.time() > self.final_timer + 15:
+                identity = self.DST_REF[np.argmax(self.ID_guesses)]
+                char0 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[0])]
+                char1 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[1])]
+                char2 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[2])]
+                char3 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[3])]
+                self.licenses.publish(str('TeamEthan,notsafe,' + identity + ',' + char0
+                                                                                + char1
+                                                                                + char2
+                                                                                + char3))
+
+
+                time.sleep(1)
+                 
+                self.licenses.publish("TeamEthan,notsafe,-1,AA00")
+                while(1):
+                    print("WE DID IT")
+        elif self.state == States.FIND_PLATES:
             license_corners = self.seek_license()
-            self.check_plate(license_corners)
+            self.check_plate(license_corners)  
         elif self.state == States.WAIT:
             pass
 
@@ -188,7 +221,7 @@ class plate_handler:
         plt_set = [self.get_char(plt_mask, rect) for rect in plt_rect]
         dst_set = self.get_char(dst_mask, dst_rect)
         #TODO: self.read_licence(dst_set, plt_set)
-        self.simple_predict(dst_set, plt_set)
+        self.read_licence(dst_set, plt_set)
 
     def simple_predict(self, dst, plts):
         identifier = self.DST_REF[np.argmax(self.dst_reader.predict(dst))]
@@ -204,35 +237,52 @@ class plate_handler:
                                                                  + char2
                                                                  +char3))
 
+    def zero_hot(len):
+        return np.zeros(len, dtype=int)
 
-    # def read_licence(self, plate_identifier_image, plate_char_images):
-    #     #TODO: initialize self.submission_timer to 0 in whatever object it belongs to
-    #     encoder_len = len(self.ONE_HOT_REF)
-    #     def zero_hot(len):
-    #         return np.zeros(len, dtype=int)
-    #     if time.time() > self.submission_timer + 2:
-    #         identity = self.ONE_HOT_REF[np.argmax(self.plate_identifier_guesses)]
-    #         char0 = self.ONE_HOT_REF[np.argmax(self.plate_char_guesses[0])]
-    #         char1 = self.ONE_HOT_REF[np.argmax(self.plate_char_guesses[1])]
-    #         char2 = self.ONE_HOT_REF[np.argmax(self.plate_char_guesses[2])]
-    #         char3 = self.ONE_HOT_REF[np.argmax(self.plate_char_guesses[3])]
-    #         #This exists in driver.py so this call needs to link to it somehow
-    #         self.licenses.publish(str('TeamEthan,notsafe,' + identity + ',' + char0
-    #                                                                         + char1
-    #                                                                         + char2
-    #                                                                         +char3))
-    #         self.plate_identifier_guesses = zero_hot(encoder_len)
-    #         self.plate_char_guesses = [zero_hot(encoder_len),
-    #                                     zero_hot(encoder_len),
-    #                                     zero_hot(encoder_len),
-    #                                     zero_hot(encoder_len)]
-    #     #CNN here is meant to pass the thing in brackets to the CNN and get pack a 36 long 1 hot array of the CNN's guess
-    #     plate_identifier_guess = plate_reader.predict(plate_identifier_image)
-    #     plate_char_guesses = plate_reader.predict(plate_char_images)
-    #     self.plate_identifier_guesses += plate_identifier_guess
-    #     for char, i in enumerate(plate_char_guesses):
-    #         self.plate_char_guesses[i] += char
-    #     self.submission_timer = time.time()
+
+    def read_licence(self, plate_identifier_image, plate_char_images):
+        #TODO: initialize self.submission_timer to 0 in whatever object it belongs to
+        encoder_len = len(self.ONE_HOT_REF)
+        identifier_len = len(self.DST_REF)
+
+        if self.first_plate:
+            self.submission_timer = time.time()
+            self.first_plate = False
+
+        print(f"submission timer: {self.submission_timer}")
+        print(f"real time = {time.time()}")
+        
+        if time.time() > self.submission_timer + 2:
+            print("trying")
+            identity = self.DST_REF[np.argmax(self.ID_guesses)]
+            char0 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[0])]
+            char1 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[1])]
+            char2 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[2])]
+            char3 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[3])]
+            #This exists in driver.py so this call needs to link to it somehow
+            self.licenses.publish(str('TeamEthan,notsafe,' + identity + ',' + char0
+                                                                            + char1
+                                                                            + char2
+                                                                            + char3))
+            self.ID_guesses = np.zeros(8,dtype=int)
+            self.Char_guesses = [np.zeros(36,dtype=int),
+                                np.zeros(36 , dtype=int),
+                                np.zeros(36,dtype=int),
+                                np.zeros(36,dtype=int)]
+
+        #CNN here is meant to pass the thing in brackets to the CNN and get pack a 36 long 1 hot array of the CNN's guess
+        plate_char_guesses = [np.array(self.plate_reader.predict(plate)) for plate in plate_char_images]
+        plate_identifier_guess = self.dst_reader.predict(plate_identifier_image)
+        self.ID_guesses = np.add(self.ID_guesses, plate_identifier_guess)
+        for i,char in enumerate(plate_char_guesses):
+            self.Char_guesses[i] = np.add(self.Char_guesses[i], char)
+        if self.DST_REF[np.argmax(self.ID_guesses)] == 7 and not self.final_countdown:
+            print("set guess")
+            self.final_timer = time.time()
+            self.final_countdown = True
+        self.submission_timer = time.time()
+        
 
 class plate_reader:
     SAVE_PATH = "/home/fizzer/cnn_trainer/letter_model/save/"
