@@ -11,6 +11,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Twist
 import rosgraph_msgs
 import time
+import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras import models
 from tensorflow.keras import optimizers
@@ -88,7 +89,7 @@ class plate_handler:
     
     def state_machine(self):
         print(self.state)
-        if self.final_countdown and time.time() > self.final_timer + 15:
+        if self.final_countdown and time.time() > self.final_timer + 3:
                 identity = self.DST_REF[np.argmax(self.ID_guesses)]
                 char0 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[0])]
                 char1 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[1])]
@@ -277,7 +278,7 @@ class plate_handler:
         self.ID_guesses = np.add(self.ID_guesses, plate_identifier_guess)
         for i,char in enumerate(plate_char_guesses):
             self.Char_guesses[i] = np.add(self.Char_guesses[i], char)
-        if self.DST_REF[np.argmax(self.ID_guesses)] == 7 and not self.final_countdown:
+        if self.DST_REF[np.argmax(self.ID_guesses)] == "8" and not self.final_countdown:
             print("set guess")
             self.final_timer = time.time()
             self.final_countdown = True
@@ -299,7 +300,9 @@ class States(Enum):
     FIND_PLATES = auto()
     WAIT = auto()
 
-print("trying")
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 rospy.init_node('plate_handler', anonymous = True)
 plt = plate_handler()
 try:

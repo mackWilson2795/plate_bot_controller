@@ -11,6 +11,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from geometry_msgs.msg import Twist
 import rosgraph_msgs
 import time
+import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras import models
 from tensorflow.keras import optimizers
@@ -37,8 +38,8 @@ class comp_driver:
         # self.plate_path = "/home/fizzer/plate_images"
         # self.counter = self.set_im_num()
 
-        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.20, ang_speed=0.50)
-        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.27, ang_speed=0.50)
+        self.controller = driver_controller(self.OUTER_LOAD_PATH, lin_speed=0.40, ang_speed=0.90)
+        self.inner_controller = driver_controller(self.INNER_LOAD_PATH, lin_speed=0.40, ang_speed=0.90)
 
         self.mover = rospy.Publisher("/R1/cmd_vel",
                                         Twist,
@@ -348,6 +349,9 @@ class driver_controller:
         print(f"x: {move.linear.x}\nz: {move.angular.z}")
         return move
 
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
 rospy.init_node('comp_driver', anonymous = True)
 comp = comp_driver()
 try:
