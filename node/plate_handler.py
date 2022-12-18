@@ -231,7 +231,6 @@ class plate_handler:
     def zero_hot(len):
         return np.zeros(len, dtype=int)
 
-
     def read_licence(self, plate_identifier_image, plate_char_images):
         encoder_len = len(self.ONE_HOT_REF)
         identifier_len = len(self.DST_REF)

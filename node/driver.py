@@ -64,7 +64,7 @@ class comp_driver:
     def state_machine(self):
         # print(f"Drive state: {self.state}")
         if self.state == "startup":
-            # This was unused in competition, it was an early debug state we used to make a specific maneuver
+            # This was unused in competition, it was an early debug state we used to make a specific maneuver at initialization
             move_command = Twist()
             if(time.time() < self.startup_time + 4):
                 move_command.linear.x = 0.2
