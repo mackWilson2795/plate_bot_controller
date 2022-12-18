@@ -88,7 +88,7 @@ class plate_handler:
             self.state = States.FIND_PLATES
     
     def state_machine(self):
-        print(self.state)
+        # print(self.state)
         if self.final_countdown and time.time() > self.final_timer + 3:
                 identity = self.DST_REF[np.argmax(self.ID_guesses)]
                 char0 = self.ONE_HOT_REF[np.argmax(self.Char_guesses[0])]
@@ -100,9 +100,8 @@ class plate_handler:
                                                                                 + char2
                                                                                 + char3))
 
-
                 time.sleep(1)
-                 
+                
                 self.licenses.publish("TeamEthan,notsafe,-1,AA00")
                 while(1):
                     print("WE DID IT")
@@ -155,10 +154,6 @@ class plate_handler:
         dst = cv2.warpPerspective(self.best_plate_image, M, (int(width),int(height)+150))
         plate_height = 150
         plate_image = dst[dst.shape[0] - plate_height:,:]
-        # # TODO: remove
-        # cv2.imwrite(f"{self.plate_path}/PLT_{self.counter:06d}.jpg", plate_image)
-        # self.counter +=1
-        # self.make_CNN_chars(dst, plate_image)
         self.slice_plate(dst, plate_image)
 
     def make_CNN_chars(self, full_image, plate_image):
@@ -172,12 +167,6 @@ class plate_handler:
         cv2.waitKey(3)
         cv2.imshow("full plate feed", mask_full)
         cv2.waitKey(3)
-
-        # self.slice_plate(mask_full, mask_plate)
- 
-       #TODO: pass both the license plate identifier number image and a
-       #list of the different characters on the plate images to
-       #read_licence
 
     def one_hot_map(self, c):
         # Technically could build this array at the start for efficiency
@@ -224,6 +213,7 @@ class plate_handler:
         #TODO: self.read_licence(dst_set, plt_set)
         self.read_licence(dst_set, plt_set)
 
+    # This was not used in the competition but was a debug function for the plate network
     def simple_predict(self, dst, plts):
         identifier = self.DST_REF[np.argmax(self.dst_reader.predict(dst))]
         plt_chars = [self.plate_reader.predict(plt) for plt in plts]
@@ -243,7 +233,6 @@ class plate_handler:
 
 
     def read_licence(self, plate_identifier_image, plate_char_images):
-        #TODO: initialize self.submission_timer to 0 in whatever object it belongs to
         encoder_len = len(self.ONE_HOT_REF)
         identifier_len = len(self.DST_REF)
 
@@ -290,7 +279,7 @@ class plate_reader:
 
     def __init__(self, save_path = SAVE_PATH):
         self.conv_model = models.load_model(save_path)
-    
+
     def predict(self, img):
         print("making prediction")
         img = img.reshape(1, len(img), len(img[0]), -1)
@@ -300,9 +289,12 @@ class States(Enum):
     FIND_PLATES = auto()
     WAIT = auto()
 
+# For Mack PC
+# Comment out if not using GPU for networks
 gpus = tf.config.experimental.list_physical_devices('GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
+
 rospy.init_node('plate_handler', anonymous = True)
 plt = plate_handler()
 try:
