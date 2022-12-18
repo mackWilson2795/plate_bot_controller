@@ -38,7 +38,6 @@ class ped_handler:
         self.lower_hsv = np.array([self.HSV_THRESH["lh"], self.HSV_THRESH["ls"],self.HSV_THRESH["lv"]])
         self.upper_hsv = np.array([self.HSV_THRESH["uh"], self.HSV_THRESH["us"],self.HSV_THRESH["uv"]])
         self.state = States.FIND_LINE
-        # self.state = States.PREP_INNER
         self.bg_sub = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
         self.mask_count = 0
         self.prev_cX = 0
@@ -68,15 +67,13 @@ class ped_handler:
 
         if self.state == States.FIND_LINE or self.state == States.PREP_STOP: 
             mask = self.filter_img(img)
+            
             contours, _ = cv2.findContours(mask, 
                                                     cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
             if len(contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_CNT_AREA:
-                # cv2.imshow("Red Mask", mask)
-                # cv2.waitKey(1)
                 self.state = States.PREP_STOP
                 self.consecutive_dropped_line = 0
-
             elif self.state == States.PREP_STOP and self.consecutive_dropped_line < 2:
                 self.consecutive_dropped_line += 1
             elif self.state == States.PREP_STOP:
@@ -95,19 +92,15 @@ class ped_handler:
             contours, _ = cv2.findContours(fg_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             cnts_sorted = sorted(contours, key=lambda x: cv2.contourArea(x))
             if len (contours) > 0 and cv2.contourArea(cnts_sorted[-1]) > self.MIN_PED_AREA:
-                print(cv2.contourArea(cnts_sorted[-1]))
+                # print(cv2.contourArea(cnts_sorted[-1]))
                 moment = cv2.moments(cnts_sorted[-1])
                 cX = int((moment["m10"]+0.00001) / (moment["m00"]+0.00001))
                 print(cX, " ", self.prev_cX)
                 if self.PED_CENTER_REGION[0] <= cX <= self.PED_CENTER_REGION[1]:
-                    print("ped in center")
+                    print("Pedestrian in center")
                     self.state = States.WAIT_PED
                     time.sleep(0.5)
                     self.state = States.DRIVE
-                # elif self.state == States.WAIT_PED and abs(cX - self.prev_cX) < self.MIN_MOVE_DIST:
-                # elif self.state == States.WAIT_PED:
-                #    self.state = States.DRIVE
-                # self.prev_cX = cX
         
         if self.state == States.DRIVE:
             self.pub.publish("ped_drive")
